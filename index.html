@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR 코드 생성기</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QRCode.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        /* QR 코드 컨테이너 기본 스타일 */
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 250px;
+            background-color: #f3f4f6; /* bg-gray-100 */
+            border: 2px dashed #d1d5db; /* border-gray-300 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+        #qrcode img {
+            margin: auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-radius: 0.5rem;
+        }
+        
+        /* 스크롤바 커스텀 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4 font-sans text-slate-800">
+
+    <div class="bg-white rounded-3xl shadow-xl w-full max-w-4xl flex flex-col md:flex-row overflow-hidden border border-slate-100">
+        
+        <!-- 왼쪽: 설정 영역 -->
+        <div class="w-full md:w-1/2 p-8 lg:p-10 bg-white flex flex-col">
+            <h1 class="text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">QR 코드 생성기</h1>
+            <p class="text-slate-500 mb-8 text-sm">URL, 텍스트, 연락처 등을 입력하여 나만의 QR 코드를 만들어보세요.</p>
+
+            <!-- 에러 메시지 모달 (평소엔 숨김) -->
+            <div id="errorMsg" class="hidden mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-xl flex items-center gap-2 font-medium" role="alert">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <span>내용을 입력해주세요!</span>
+            </div>
+
+            <!-- 폼 영역 -->
+            <div class="space-y-6 flex-grow">
+                
+                <!-- 텍스트 입력 -->
+                <div>
+                    <label for="textInput" class="block text-sm font-semibold text-slate-700 mb-2">웹 주소 또는 텍스트</label>
+                    <textarea id="textInput" rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none text-slate-700 placeholder-slate-400 bg-slate-50 focus:bg-white" placeholder="https://example.com 또는 원하는 문구를 입력하세요."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <!-- 크기 조절 -->
+                    <div>
+                        <label for="sizeInput" class="block text-sm font-semibold text-slate-700 mb-2 flex justify-between">
+                            <span>크기</span>
+                            <span id="sizeValue" class="text-blue-600">250px</span>
+                        </label>
+                        <input type="range" id="sizeInput" min="100" max="500" step="10" value="250" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    </div>
+
+                    <!-- 색상 조절 -->
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label for="fgColorInput" class="block text-sm font-semibold text-slate-700 mb-2">QR 색상</label>
+                            <div class="h-10 w-full rounded-xl border border-slate-200 overflow-hidden cursor-pointer focus-within:ring-2 focus-within:ring-blue-500 relative">
+                                <input type="color" id="fgColorInput" value="#000000" class="absolute -top-2 -left-2 w-16 h-16 cursor-pointer">
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <label for="bgColorInput" class="block text-sm font-semibold text-slate-700 mb-2">배경색</label>
+                            <div class="h-10 w-full rounded-xl border border-slate-200 overflow-hidden cursor-pointer focus-within:ring-2 focus-within:ring-blue-500 relative">
+                                <input type="color" id="bgColorInput" value="#ffffff" class="absolute -top-2 -left-2 w-16 h-16 cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 버튼 영역 -->
+            <button onclick="generateQR()" class="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-6 rounded-xl transition duration-200 flex justify-center items-center gap-2 shadow-lg shadow-blue-600/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                </svg>
+                QR 코드 생성
+            </button>
+        </div>
+
+        <!-- 오른쪽: 미리보기 및 다운로드 영역 -->
+        <div class="w-full md:w-1/2 p-8 lg:p-10 bg-slate-50 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-slate-100">
+            
+            <h2 class="text-lg font-bold text-slate-800 mb-6 self-start w-full text-center md:text-left">미리보기</h2>
+            
+            <div class="flex-grow w-full flex flex-col items-center justify-center space-y-8">
+                <!-- QR 코드가 그려질 영역 -->
+                <div id="qrcode" class="w-full max-w-[300px] aspect-square">
+                    <div class="text-slate-400 text-sm flex flex-col items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 opacity-50">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+                        </svg>
+                        <span>QR 코드가 여기에 표시됩니다</span>
+                    </div>
+                </div>
+
+                <!-- 다운로드 버튼 (초기엔 숨김 처리) -->
+                <button id="downloadBtn" onclick="downloadQR()" class="hidden w-full max-w-[300px] bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-6 rounded-xl transition duration-200 flex justify-center items-center gap-2 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    이미지 다운로드
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // DOM 요소 캐싱
+        const textInput = document.getElementById('textInput');
+        const sizeInput = document.getElementById('sizeInput');
+        const sizeValue = document.getElementById('sizeValue');
+        const fgColorInput = document.getElementById('fgColorInput');
+        const bgColorInput = document.getElementById('bgColorInput');
+        const qrcodeContainer = document.getElementById('qrcode');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const errorMsg = document.getElementById('errorMsg');
+
+        // 슬라이더 변경 시 크기 텍스트 업데이트
+        sizeInput.addEventListener('input', function() {
+            sizeValue.textContent = this.value + 'px';
+        });
+
+        // 텍스트 입력창에서 Enter 키 누르면 생성 (Shift+Enter는 줄바꿈)
+        textInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                generateQR();
+            }
+        });
+
+        // QR 코드 생성 함수
+        function generateQR() {
+            const text = textInput.value.trim();
+            const size = parseInt(sizeInput.value);
+            const fgColor = fgColorInput.value;
+            const bgColor = bgColorInput.value;
+
+            // 유효성 검사 (텍스트가 비어있는 경우)
+            if (!text) {
+                errorMsg.classList.remove('hidden');
+                textInput.focus();
+                return;
+            }
+            
+            // 에러 메시지 숨기기
+            errorMsg.classList.add('hidden');
+
+            // 기존 QR 코드 및 안내 문구 초기화
+            qrcodeContainer.innerHTML = '';
+            
+            // 디자인 속성 초기화 (배경, 테두리 제거)
+            qrcodeContainer.style.backgroundColor = 'transparent';
+            qrcodeContainer.style.border = 'none';
+
+            // QRCode.js 라이브러리를 사용하여 생성
+            new QRCode(qrcodeContainer, {
+                text: text,
+                width: size,
+                height: size,
+                colorDark : fgColor,
+                colorLight : bgColor,
+                correctLevel : QRCode.CorrectLevel.H // 오류 복원력 높음 (H)
+            });
+
+            // 생성 직후 이미지가 로드될 시간을 약간 부여한 뒤 다운로드 버튼 표시
+            setTimeout(() => {
+                downloadBtn.classList.remove('hidden');
+            }, 100);
+        }
+
+        // QR 코드 다운로드 함수
+        function downloadQR() {
+            // qrcode.js는 내부적으로 canvas와 img 태그를 생성합니다.
+            const img = qrcodeContainer.querySelector('img');
+            const canvas = qrcodeContainer.querySelector('canvas');
+            
+            let downloadUrl = '';
+
+            // img 태그에 src 데이터가 성공적으로 만들어졌을 때
+            if (img && img.src && img.src.startsWith('data:image')) {
+                downloadUrl = img.src;
+            } 
+            // 캔버스만 있을 경우 캔버스에서 데이터 추출
+            else if (canvas) {
+                downloadUrl = canvas.toDataURL("image/png");
+            }
+
+            if (downloadUrl) {
+                // 다운로드를 위한 임시 a 태그 생성
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = 'my-qrcode.png'; // 저장될 파일 이름
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+    </script>
+</body>
+</html>
